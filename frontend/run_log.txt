@@ -1,0 +1,29 @@
+Launching lib\main.dart on moto g57 power in debug mode...
+Running Gradle task 'assembleDebug'...                          
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'D:\Vicsta_fintech\Vicsta_fintech\SubVampireSlayer\frontend\android\build.gradle.kts' line: 19
+
+* What went wrong:
+A problem occurred configuring project ':app'.
+> [CXX1101] NDK at C:\Users\HP\AppData\Local\Android\Sdk\ndk\28.2.13676358 did not have a source.properties file
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s
+Running Gradle task 'assembleDebug'...                              5.6s
+
+┌─ Flutter Fix ───────────────────────────────────────────────────────────────┐
+│     [!] This is likely due to a malformed download of the NDK.              │
+│     This can be fixed by deleting the local NDK copy at:                    │
+│     C:\Users\HP\AppData\Local\Android\Sdk\ndk\28.2.13676358                 │
+│     and allowing the Android Gradle Plugin to automatically re-download it. │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+Error: Gradle task assembleDebug failed with exit code 1
