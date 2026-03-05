@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../usage_db.dart';
 
 class ScreenTimeService {
-  static const MethodChannel _channel = MethodChannel('com.subvampireslayer.screentime');
+  static const MethodChannel _channel = MethodChannel('com.niyampe.screentime');
   static const String _permissionKey = 'has_usage_permission';
 
   // Mapping system for package names to merchant names

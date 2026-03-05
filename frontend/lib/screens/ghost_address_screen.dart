@@ -167,7 +167,7 @@ class _GhostAddressScreenState extends State<GhostAddressScreen> {
         ),
       ),
       body: _isLoading && _ghostAddresses.isEmpty && _walletBalance == 0
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF0266)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF00DEC1)))
           : Column(
               children: [
                 // Premium Wallet Card
@@ -229,8 +229,8 @@ class _GhostAddressScreenState extends State<GhostAddressScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                 leading: Container(
                                   padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(color: const Color(0xFFFF0266).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                  child: const Icon(Icons.alternate_email, color: Color(0xFFFF0266), size: 20),
+                                  decoration: BoxDecoration(color: const Color(0xFF00DEC1).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                  child: const Icon(Icons.alternate_email, color: Color(0xFF00DEC1), size: 20),
                                 ),
                                 title: Text(
                                   ghost['email_address'], 
@@ -288,7 +288,7 @@ class _GhostAddressScreenState extends State<GhostAddressScreen> {
                       icon: _isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.add, size: 20),
                       label: const Text("NEW GHOST ID", style: TextStyle(letterSpacing: 1.1, fontSize: 13, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF0266),
+                        backgroundColor: const Color(0xFF00DEC1),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -326,7 +326,7 @@ class _GhostAddressScreenState extends State<GhostAddressScreen> {
               Navigator.pop(context);
               _topupWallet(amt);
             },
-            child: const Text("RECHARGE", style: TextStyle(color: Color(0xFFFF0266))),
+            child: const Text("RECHARGE", style: TextStyle(color: Color(0xFF00DEC1))),
           ),
         ],
       ),

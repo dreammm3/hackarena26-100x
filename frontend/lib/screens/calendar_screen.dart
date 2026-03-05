@@ -16,6 +16,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime? _selectedDay;
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
+  final Color _bgColor = const Color(0xFF0F0F1E); 
+  final Color _cardColor = const Color(0xFF1A1A2E); 
+  final Color _accentTeal = const Color(0xFF00DEC1); 
+  final Color _textColor = Colors.white;
+  final Color _subTextColor = Colors.white54;
+
   @override
   void initState() {
     super.initState();
@@ -23,67 +29,142 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   List<dynamic> _getEventsForDay(DateTime day) {
-    final String dayStr = _dateFormat.format(day);
     return widget.subscriptions.where((sub) {
       final nextBillingStr = sub['Next Billing Date']?.toString() ?? "";
-      return nextBillingStr == dayStr;
+      try {
+        final date = _dateFormat.parse(nextBillingStr);
+        // Treat subscriptions as recurring monthly for the calendar view
+        return date.day == day.day;
+      } catch (e) {
+        return false;
+      }
     }).toList();
+  }
+
+  void _showEventPopup(BuildContext context, List<dynamic> events) {
+    if (events.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: _cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.receipt_long_rounded, color: _accentTeal),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Bill Details",
+                      style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.close, color: _subTextColor),
+                      onPressed: () => Navigator.pop(context),
+                    )
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ...events.map((e) {
+                  final sub = e as Map<String, dynamic>;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sub['Merchant']?.toString() ?? "Unknown",
+                          style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Category: ${sub['Category']?.toString() ?? 'Subscription'}",
+                          style: TextStyle(color: _subTextColor, fontSize: 13),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Amount Due",
+                              style: TextStyle(color: _subTextColor, fontSize: 14),
+                            ),
+                            Text(
+                              "₹${sub['Monthly Cost'] ?? '0'}",
+                              style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildDayCell(DateTime date, bool isToday, {bool isSelected = false}) {
     final events = _getEventsForDay(date);
+    final hasEvents = events.isNotEmpty;
+
     return Container(
-      margin: const EdgeInsets.all(2),
+      margin: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF7B61FF) : (isToday ? const Color(0xFF7B61FF).withOpacity(0.1) : Colors.transparent),
-        borderRadius: BorderRadius.circular(8),
-        border: isToday ? Border.all(color: const Color(0xFF7B61FF).withOpacity(0.5)) : null,
+        color: isSelected
+            ? _accentTeal
+            : (isToday ? Colors.white.withOpacity(0.05) : Colors.transparent),
+        shape: BoxShape.circle,
+        boxShadow: isSelected
+            ? [BoxShadow(color: _accentTeal.withOpacity(0.4), blurRadius: 10, spreadRadius: 2)]
+            : null,
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            '${date.day}',
-            style: TextStyle(
-              color: isSelected ? Colors.white : (isToday ? const Color(0xFF7B61FF) : Colors.white70),
-              fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                color: _textColor,
+                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
             ),
-          ),
-          const Spacer(),
-          if (events.isNotEmpty)
-            Column(
-              children: events.take(1).map((e) {
-                final event = e as Map<String, dynamic>;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFF7B61FF).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    event['Merchant']?.toString() ?? "",
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF7B61FF),
-                      fontSize: 7,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-            ),
-          const SizedBox(height: 4),
-        ],
+            if (hasEvents)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : _accentTeal,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Improved upcoming bills logic
+    // Generate upcoming bills logic
     final List<Map<String, dynamic>> upcomingBills = [];
     final now = DateTime.now();
     final todayMidnight = DateTime(now.year, now.month, now.day);
@@ -92,17 +173,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (sub is Map<String, dynamic>) {
         final nextBillingStr = sub['Next Billing Date']?.toString() ?? "";
         try {
-          final nextDate = _dateFormat.parse(nextBillingStr);
-          if (nextDate.isAfter(todayMidnight.subtract(const Duration(minutes: 1)))) {
-            upcomingBills.add(sub);
+          final originalDate = _dateFormat.parse(nextBillingStr);
+          
+          // Subscriptions recur monthly. Find the next occurrence from today.
+          DateTime nextOccurrence = DateTime(now.year, now.month, originalDate.day);
+          if (nextOccurrence.isBefore(todayMidnight)) {
+            // Already passed this month, so the next bill is next month
+            int nextMonth = now.month == 12 ? 1 : now.month + 1;
+            int nextYear = now.month == 12 ? now.year + 1 : now.year;
+            nextOccurrence = DateTime(nextYear, nextMonth, originalDate.day);
           }
+
+          // Clone sub to modify the display date without changing the global state
+          final uiSub = Map<String, dynamic>.from(sub);
+          uiSub['Next Billing Date'] = _dateFormat.format(nextOccurrence);
+          upcomingBills.add(uiSub);
         } catch (e) {
-          // If date parsing fails, we could optionally still show it or log it
+          // ignore
         }
       }
     }
 
-    // Sort upcoming bills by date
     upcomingBills.sort((a, b) {
       try {
         final dateA = _dateFormat.parse(a['Next Billing Date'].toString());
@@ -114,16 +205,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1E),
+      backgroundColor: _bgColor,
       appBar: AppBar(
-        title: const Text("Calendar", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        title: Text("Calendar", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: _textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.search, color: _accentTeal),
+              onPressed: () {},
+            ),
           )
         ],
       ),
@@ -133,32 +230,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             // Calendar Card
             Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF16162A),
+                color: _cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
               ),
               child: TableCalendar(
                 firstDay: DateTime.utc(2020, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 31),
                 focusedDay: _focusedDay,
-                rowHeight: 90, // Adjusted for labels
+                rowHeight: 52,
                 selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                 onDaySelected: (selectedDay, focusedDay) {
                   setState(() {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
+                  final events = _getEventsForDay(selectedDay);
+                  
+                  // Modify the events so the popup correctly shows the selected month/year
+                  final List<Map<String, dynamic>> popupEvents = events.map((e) {
+                    final modified = Map<String, dynamic>.from(e as Map<String, dynamic>);
+                    final originalDate = _dateFormat.parse(modified['Next Billing Date'].toString());
+                    final nextOccurrence = DateTime(selectedDay.year, selectedDay.month, originalDate.day);
+                    modified['Next Billing Date'] = _dateFormat.format(nextOccurrence);
+                    return modified;
+                  }).toList();
+                  
+                  if (popupEvents.isNotEmpty) {
+                    _showEventPopup(context, popupEvents);
+                  }
                 },
                 eventLoader: _getEventsForDay,
-                headerStyle: const HeaderStyle(
+                headerStyle: HeaderStyle(
                   formatButtonVisible: false,
                   titleCentered: true,
-                  titleTextStyle: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  leftChevronIcon: Icon(Icons.chevron_left, color: Color(0xFF7B61FF)),
-                  rightChevronIcon: Icon(Icons.chevron_right, color: Color(0xFF7B61FF)),
+                  titleTextStyle: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                  leftChevronIcon: Icon(Icons.chevron_left, color: _accentTeal),
+                  rightChevronIcon: Icon(Icons.chevron_right, color: _accentTeal),
                 ),
                 calendarBuilders: CalendarBuilders(
                   defaultBuilder: (context, date, _) => _buildDayCell(date, false),
@@ -168,191 +278,120 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 calendarStyle: const CalendarStyle(
                   outsideDaysVisible: false,
-                  markersMaxCount: 0,
+                  markersMaxCount: 0, // We handle markers manually inside cell builder
                 ),
                 daysOfWeekStyle: const DaysOfWeekStyle(
-                  weekdayStyle: TextStyle(color: Colors.white38, fontSize: 12),
-                  weekendStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                  weekdayStyle: TextStyle(color: Color(0xFFFF0266), fontSize: 12, fontWeight: FontWeight.bold),
+                  weekendStyle: TextStyle(color: Color(0xFFFF0266), fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             
-            // Selected Day Bills Section
-            if (_selectedDay != null) ...[
-              Builder(
-                builder: (context) {
-                  final dayBills = _getEventsForDay(_selectedDay!);
-                  if (dayBills.isEmpty) return const SizedBox.shrink();
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: Text(
-                          "Bills for ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}",
-                          style: const TextStyle(color: Color(0xFF7B61FF), fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: dayBills.length,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemBuilder: (context, index) {
-                          final sub = dayBills[index] as Map<String, dynamic>;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [const Color(0xFF7B61FF).withOpacity(0.2), const Color(0xFF16162A)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF7B61FF).withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF7B61FF).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      (sub['Merchant']?.toString() ?? "?")[0].toUpperCase(),
-                                      style: const TextStyle(color: Color(0xFF7B61FF), fontWeight: FontWeight.bold, fontSize: 18),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        sub['Merchant']?.toString() ?? "Unknown",
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                                      ),
-                                      Text(
-                                        sub['Category']?.toString() ?? "Subscription",
-                                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      "₹${sub['Monthly Cost'] ?? '0'}",
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                                    ),
-                                    const Icon(Icons.check_circle_outline, color: Color(0xFF7B61FF), size: 14),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
-
             // Upcoming Bills Section
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "Upcoming Bills",
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: _textColor, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text("View All", style: TextStyle(color: Color(0xFF7B61FF))),
+                  Text(
+                    "See all",
+                    style: TextStyle(color: _accentTeal, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
             ),
 
             if (upcomingBills.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(child: Text("No upcoming bills found.", style: TextStyle(color: Colors.white38))),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Center(child: Text("No upcoming bills found.", style: TextStyle(color: _subTextColor))),
               )
             else
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: upcomingBills.take(10).length,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: upcomingBills.take(5).length,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemBuilder: (context, index) {
                   final sub = upcomingBills[index];
+                  
+                  // Format the due date to "MMM dd" (e.g., Mar 15)
+                  String formattedDate = sub['Next Billing Date'] ?? '';
+                  try {
+                    final d = _dateFormat.parse(formattedDate);
+                    formattedDate = DateFormat('MMM dd').format(d);
+                  } catch (e) {
+                    // ignore
+                  }
+
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF16162A),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.03)),
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // Left Icon Box
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 50,
+                          height: 50,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
                             child: sub['Icon'] != null 
-                                ? Image.network(sub['Icon'], width: 24, errorBuilder: (c, e, s) => Text((sub['Merchant']?.toString() ?? "?")[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))
-                                : Text((sub['Merchant']?.toString() ?? "?")[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                                ? Image.network(sub['Icon'], width: 24, errorBuilder: (c, e, s) => Text((sub['Merchant']?.toString() ?? "?")[0].toUpperCase(), style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 20)))
+                                : Text((sub['Merchant']?.toString() ?? "?")[0].toUpperCase(), style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 20)),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
+                        
+                        // Center Details
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 sub['Merchant']?.toString() ?? "Unknown",
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              const SizedBox(height: 4),
                               Text(
-                                "Due ${sub['Next Billing Date']}",
-                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                                "Due $formattedDate",
+                                style: TextStyle(color: _accentTeal, fontSize: 13, fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
                         ),
+                        
+                        // Right Amount & Pay Pill
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
                               "₹${sub['Monthly Cost'] ?? '0'}",
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                              style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF7B61FF).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: _accentTeal.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                sub['Type']?.toUpperCase() ?? "STANDARD",
-                                style: const TextStyle(color: Color(0xFF7B61FF), fontSize: 8, fontWeight: FontWeight.bold),
+                                "PAY",
+                                style: TextStyle(color: _accentTeal, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                               ),
                             ),
                           ],
@@ -362,7 +401,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
                 },
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
           ],
         ),
       ),

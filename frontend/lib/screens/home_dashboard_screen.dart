@@ -6,16 +6,20 @@ import 'ghost_address_screen.dart';
 
 class HomeDashboardScreen extends StatelessWidget {
   final String userId;
+  final String userEmail;
   final List<dynamic> subscriptions;
   final VoidCallback onLogout;
   final VoidCallback onRefresh;
+  final double monthlyBudget;
 
   const HomeDashboardScreen({
     super.key,
     required this.userId,
+    required this.userEmail,
     required this.subscriptions,
     required this.onLogout,
     required this.onRefresh,
+    required this.monthlyBudget,
   });
 
   @override
@@ -87,7 +91,7 @@ class HomeDashboardScreen extends StatelessWidget {
         Container(
           margin: const EdgeInsets.only(right: 16),
           child: const CircleAvatar(
-            backgroundColor: Color(0xFFFF0266),
+            backgroundColor: Color(0xFF00DEC1),
             child: Icon(Icons.person, color: Colors.white),
           ),
         ),
@@ -96,11 +100,14 @@ class HomeDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildHeader() {
+    String userName = userEmail.split('@')[0];
+    userName = userName[0].toUpperCase() + userName.substring(1);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Hey User,",
+          "Hey $userName,",
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
             fontSize: 18,
@@ -125,8 +132,8 @@ class HomeDashboardScreen extends StatelessWidget {
       children: [
         _buildSummaryCard(
           "Monthly Budget",
-          "₹15,000",
-          "Remaining: ₹${(15000 - totalMonthly).toStringAsFixed(0)}",
+          "₹${NumberFormat('#,##,###').format(monthlyBudget)}",
+          "Remaining: ₹${NumberFormat('#,##,###').format(monthlyBudget - totalMonthly)}",
           const [Color(0xFF6200EE), Color(0xFFBB86FC)],
           Icons.account_balance_wallet,
         ),
@@ -230,7 +237,7 @@ class HomeDashboardScreen extends StatelessWidget {
         ),
         TextButton(
           onPressed: () {},
-          child: const Text("View All", style: TextStyle(color: Color(0xFFFF0266), fontSize: 13)),
+          child: const Text("View All", style: TextStyle(color: Color(0xFF00DEC1), fontSize: 13)),
         ),
       ],
     );
@@ -247,7 +254,7 @@ class HomeDashboardScreen extends StatelessWidget {
       final g = ghosts.first;
       alertData.add({
         'priority': 0,
-        'color': const Color(0xFFFF0266),
+        'color': const Color(0xFF00DEC1),
         'icon': Icons.money_off_rounded,
         'title': '🔴 Zombie Sub: ${g['Merchant']}',
         'body': 'Ghost Score ${((g['Ghost Score'] ?? 0).toDouble()).toStringAsFixed(0)}% — You haven\'t used this in a while. Cancel to save ₹${(g['Monthly Cost'] ?? 0).toStringAsFixed(0)}/mo.',
@@ -308,10 +315,10 @@ class HomeDashboardScreen extends StatelessWidget {
             shownBundles.add(clean);
             alertData.add({
               'priority': 3,
-              'color': Colors.greenAccent,
-              'icon': Icons.account_balance_wallet_rounded,
-              'title': '💚 Bundle Opportunity',
-              'body': clean,
+              'color': const Color(0xFF7B61FF),
+              'icon': Icons.auto_awesome,
+              'title': '🇮🇳 INDIAN BUNDLE SAVINGS',
+              'body': clean.toUpperCase(),
             });
           }
         }

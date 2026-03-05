@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+pandas
+openpyxl
+plaid-python
+python-dotenv
+sqlalchemy
+psycopg2-binary
+alembic
+pydantic
+thefuzz[speedup]
+python-Levenshtein
+xgboost
+scikit-learn
+lightgbm
+joblib
+cohere

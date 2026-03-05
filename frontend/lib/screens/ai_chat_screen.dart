@@ -15,7 +15,7 @@ class AiChatScreen extends StatefulWidget {
 class _AiChatScreenState extends State<AiChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [
-    {'role': 'ai', 'content': 'Hello! I am your Slayer AI. Need help managing your subscriptions or finding ways to save? Ask me anything!'}
+    {'role': 'ai', 'content': 'Hello! I am NiyamPe AI. Need help managing your subscriptions or finding ways to save? Ask me anything!'}
   ];
   bool _isTyping = false;
   final ScrollController _scrollController = ScrollController();
@@ -82,9 +82,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.auto_awesome, color: Color(0xFFFF0266)),
+            Icon(Icons.auto_awesome, color: Color(0xFF00DEC1)),
             SizedBox(width: 8),
-            Text("Slayer AI", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("NiyamPe AI", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -107,7 +107,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
                     decoration: BoxDecoration(
-                      color: isAi ? const Color(0xFF16162A) : const Color(0xFFFF0266).withOpacity(0.8),
+                      color: isAi ? const Color(0xFF16162A) : const Color(0xFF00DEC1).withOpacity(0.8),
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
@@ -161,7 +161,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   onTap: _sendMessage,
                   child: Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(color: Color(0xFFFF0266), shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: Color(0xFF00DEC1), shape: BoxShape.circle),
                     child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                   ),
                 ),

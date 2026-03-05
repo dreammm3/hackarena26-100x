@@ -11,8 +11,9 @@ import 'screens/usage_dashboard_screen.dart';
 import 'screens/home_dashboard_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/ai_chat_screen.dart';
+import 'screens/profile_screen.dart';
 
-const String syncUsageTask = "com.subvampireslayer.syncUsage";
+const String syncUsageTask = "com.niyampe.syncUsage";
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -49,44 +50,55 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SubVampire Slayer',
+      title: 'NiyamPe',
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.dark,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F0F1E),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6200EE),
-          secondary: const Color(0xFFFF0266),
+          seedColor: const Color(0xFF00DEC1),
+          primary: const Color(0xFF00DEC1),
+          secondary: const Color(0xFF00DEC1),
           brightness: Brightness.dark,
-          surface: const Color(0xFF121212),
+          surface: const Color(0xFF1A1A2E),
         ),
         textTheme: const TextTheme(
           headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 32),
           bodyLarge: TextStyle(color: Colors.white70, fontSize: 16),
         ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF0266),
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF00DEC1),
+            foregroundColor: const Color(0xFF0F0F1E),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white.withOpacity(0.05),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFFF0266), width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF00DEC1), width: 1.5),
           ),
-          labelStyle: const TextStyle(color: Colors.white70),
+          labelStyle: const TextStyle(color: Colors.white60),
         ),
       ),
       home: const AuthWrapper(),
@@ -101,41 +113,333 @@ class AuthWrapper extends StatefulWidget {
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isLoggedIn = false;
-  String? _userId;
+enum OnboardingStep { login, bankConnection, budgetSetup, dashboard }
 
-  void _onLoginSuccess(String userId) {
+class _AuthWrapperState extends State<AuthWrapper> {
+  OnboardingStep _currentStep = OnboardingStep.login;
+  String? _userId;
+  String? _userEmail;
+  double _monthlyBudget = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    // We are disabling auto-login to ensure the login page appears first as requested.
+    // To re-enable auto-login, restore the SharedPreferences check below.
+    /*
+    final prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    if (isLoggedIn) {
+      final String? userId = prefs.getString('userId');
+      final String? userEmail = prefs.getString('userEmail');
+      final bool bankConnected = prefs.getBool('bankConnected') ?? false;
+      final double budget = prefs.getDouble('monthlyBudget') ?? 0.0;
+
+      setState(() {
+        _userId = userId;
+        _userEmail = userEmail;
+        if (!bankConnected) {
+          _currentStep = OnboardingStep.bankConnection;
+        } else if (budget <= 0) {
+          _currentStep = OnboardingStep.budgetSetup;
+        } else {
+          _monthlyBudget = budget;
+          _currentStep = OnboardingStep.dashboard;
+        }
+      });
+    }
+    */
+  }
+
+  void _onLoginSuccess(String userId, String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userId', userId);
+    await prefs.setString('userEmail', email);
     setState(() {
-      _isLoggedIn = true;
       _userId = userId;
+      _userEmail = email;
+      _currentStep = OnboardingStep.bankConnection;
     });
   }
 
-  void _onLogout() {
+  void _onBankConnected() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('bankConnected', true);
     setState(() {
-      _isLoggedIn = false;
+      _currentStep = OnboardingStep.budgetSetup;
+    });
+  }
+
+  void _onBudgetSet(double budget) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('monthlyBudget', budget);
+    setState(() {
+      _monthlyBudget = budget;
+      _currentStep = OnboardingStep.dashboard;
+    });
+  }
+
+  void _onLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    setState(() {
       _userId = null;
+      _currentStep = OnboardingStep.login;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoggedIn) {
-      return LoginPage(onLoginSuccess: _onLoginSuccess);
+    switch (_currentStep) {
+      case OnboardingStep.login:
+        return LoginPage(onLoginSuccess: _onLoginSuccess);
+      case OnboardingStep.bankConnection:
+        return BankConnectionPage(onConnected: _onBankConnected);
+      case OnboardingStep.budgetSetup:
+        return BudgetSetupPage(onBudgetSet: _onBudgetSet);
+      case OnboardingStep.dashboard:
+        return FutureBuilder<bool>(
+          future: ScreenTimeService().hasUsagePermission(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (snapshot.data == false) {
+              return UsagePermissionPage(onPermissionGranted: () => setState(() {}));
+            }
+            return DashboardPage(
+              userId: _userId!,
+              userEmail: _userEmail ?? 'user@example.com',
+              onLogout: _onLogout,
+              monthlyBudget: _monthlyBudget,
+            );
+          },
+        );
     }
-    
-    return FutureBuilder<bool>(
-      future: ScreenTimeService().hasUsagePermission(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.data == false) {
-          return UsagePermissionPage(onPermissionGranted: () => setState(() {}));
-        }
-        return DashboardPage(userId: _userId!, onLogout: _onLogout);
-      },
+  }
+}
+
+class BankConnectionPage extends StatefulWidget {
+  final VoidCallback onConnected;
+  const BankConnectionPage({super.key, required this.onConnected});
+
+  @override
+  State<BankConnectionPage> createState() => _BankConnectionPageState();
+}
+
+class _BankConnectionPageState extends State<BankConnectionPage> {
+  bool _isConnecting = false;
+
+  final List<Map<String, dynamic>> _banks = [
+    {'name': 'HDFC Bank', 'icon': Icons.account_balance, 'color': Colors.blue},
+    {'name': 'ICICI Bank', 'icon': Icons.account_balance, 'color': Colors.orange},
+    {'name': 'SBI', 'icon': Icons.account_balance, 'color': Colors.lightBlue},
+    {'name': 'Axis Bank', 'icon': Icons.account_balance, 'color': Colors.purple},
+    {'name': 'Kotak Bank', 'icon': Icons.account_balance, 'color': Colors.red},
+    {'name': 'Paytm Bank', 'icon': Icons.account_balance, 'color': Colors.cyan},
+    {'name': 'IDFC First', 'icon': Icons.account_balance, 'color': Colors.indigo},
+    {'name': 'Yes Bank', 'icon': Icons.account_balance, 'color': Colors.blueAccent},
+    {'name': 'IndusInd', 'icon': Icons.account_balance, 'color': Colors.redAccent},
+  ];
+
+  void _handleConnect() async {
+    setState(() => _isConnecting = true);
+    // Simulate real bank sync
+    await Future.delayed(const Duration(seconds: 3));
+    widget.onConnected();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isConnecting) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0F0F1E),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(color: Color(0xFF00DEC1), strokeWidth: 3),
+              ),
+              const SizedBox(height: 32),
+              const Text("Syncing with your Bank...", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Text("Securely fetching your transaction history", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F1E),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              const Icon(Icons.shield_outlined, color: Color(0xFF00DEC1), size: 40),
+              const SizedBox(height: 24),
+              const Text("Connect your bank", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text("Link your account to automatically identify and slay hidden subscriptions.", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16)),
+              const SizedBox(height: 32),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Search your bank...",
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: _banks.length,
+                  itemBuilder: (context, index) {
+                    final bank = _banks[index];
+                    return InkWell(
+                      onTap: _handleConnect,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(bank['icon'], color: bank['color'], size: 28),
+                            const SizedBox(height: 8),
+                            Text(bank['name'], style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock, color: Colors.greenAccent, size: 14),
+                    SizedBox(width: 8),
+                    Text("Secure 256-bit Connection", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BudgetSetupPage extends StatefulWidget {
+  final Function(double) onBudgetSet;
+  const BudgetSetupPage({super.key, required this.onBudgetSet});
+
+  @override
+  State<BudgetSetupPage> createState() => _BudgetSetupPageState();
+}
+
+class _BudgetSetupPageState extends State<BudgetSetupPage> {
+  final TextEditingController _budgetController = TextEditingController(text: "15000");
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F1E),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 60),
+              const Text("Target budget", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text("Total monthly cap for all subscriptions.", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16)),
+              const SizedBox(height: 48),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [const Color(0xFF00DEC1).withOpacity(0.2), const Color(0xFF00DEC1).withOpacity(0.05)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFF00DEC1).withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("LIMIT PER MONTH", style: TextStyle(color: Color(0xFF00DEC1), fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.5)),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _budgetController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          prefixText: "₹",
+                          prefixStyle: TextStyle(color: Colors.white30, fontSize: 24),
+                          border: InputBorder.none,
+                          isCollapsed: true,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text("We'll alert you if you exceed this mark.", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton(
+                  onPressed: () {
+                    double? budget = double.tryParse(_budgetController.text);
+                    if (budget != null && budget > 0) {
+                      widget.onBudgetSet(budget);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00DEC1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text("FINISH SETUP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.0)),
+                ),
+              ),
+              const SizedBox(height: 48),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -155,7 +459,7 @@ class PermissionScreen extends StatelessWidget {
           children: [
             const Icon(Icons.timer_outlined, size: 80, color: Color(0xFFFF0266)),
             const SizedBox(height: 32),
-            Text("Slay the Zombies", style: Theme.of(context).textTheme.headlineMedium),
+            Text("Master Your Expenses", style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 16),
             const Text(
               "To find subscriptions you're paying for but not using, we need access to your app usage statistics.",
@@ -181,7 +485,7 @@ class PermissionScreen extends StatelessWidget {
 }
 
 class LoginPage extends StatefulWidget {
-  final Function(String) onLoginSuccess;
+  final Function(String, String) onLoginSuccess;
   const LoginPage({super.key, required this.onLoginSuccess});
 
   @override
@@ -214,7 +518,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        widget.onLoginSuccess(data['user_id']);
+        widget.onLoginSuccess(data['user_id'], data['email']);
       } else {
         setState(() {
           _errorMessage = "Invalid email or password.";
@@ -250,17 +554,30 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    width: 140,
+                    height: 140,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF0266).withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.05),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00DEC1).withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        )
+                      ],
                     ),
-                    child: const Icon(Icons.security, size: 60, color: Color(0xFFFF0266)),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/logo.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 32),
-                  Text("SubVampire Slayer", style: Theme.of(context).textTheme.headlineMedium),
+                  Text("NiyamPe", style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white)),
                   const SizedBox(height: 8),
-                  Text("Kill those hidden subscriptions.", style: Theme.of(context).textTheme.bodyLarge),
+                  Text("Niyam ke saath, har kharcha vishwas.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70)),
                   const SizedBox(height: 48),
                   TextField(
                     controller: _emailController,
@@ -341,9 +658,17 @@ class _LoginPageState extends State<LoginPage> {
 
 class DashboardPage extends StatefulWidget {
   final String userId;
+  final String userEmail;
   final VoidCallback onLogout;
+  final double monthlyBudget;
   
-  const DashboardPage({super.key, required this.userId, required this.onLogout});
+  const DashboardPage({
+    super.key, 
+    required this.userId, 
+    required this.userEmail,
+    required this.onLogout,
+    required this.monthlyBudget,
+  });
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -548,14 +873,16 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           HomeDashboardScreen(
             userId: widget.userId,
+            userEmail: widget.userEmail,
             subscriptions: _subscriptions,
             onLogout: widget.onLogout,
             onRefresh: _fetchSubscriptions,
+            monthlyBudget: widget.monthlyBudget,
           ),
           CalendarScreen(subscriptions: _subscriptions),
           _buildSubscriptionList(),
           AiChatScreen(subscriptions: _subscriptions, backendUrl: backendUrl),
-          const Scaffold(backgroundColor: Color(0xFF0F0F1E), body: Center(child: Text("Settings Coming Soon", style: TextStyle(color: Colors.white)))),
+          ProfileScreen(onLogout: widget.onLogout, userEmail: widget.userEmail, subscriptions: _subscriptions),
         ],
       ),
       bottomNavigationBar: Container(
@@ -568,7 +895,7 @@ class _DashboardPageState extends State<DashboardPage> {
           onTap: (index) => setState(() => _selectedIndex = index),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          selectedItemColor: const Color(0xFFFF0266),
+          selectedItemColor: const Color(0xFF00DEC1),
           unselectedItemColor: Colors.white38,
           type: BottomNavigationBarType.fixed,
           items: const [
@@ -576,7 +903,7 @@ class _DashboardPageState extends State<DashboardPage> {
             BottomNavigationBarItem(icon: Icon(Icons.calendar_month_rounded), label: "Calendar"),
             BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_outlined), label: "Subs"),
             BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: "AI"),
-            BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: "Settings"),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
           ],
         ),
       ),
@@ -610,15 +937,28 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
-              onPressed: () => _showOptimizationDialog(context),
-              icon: const Icon(Icons.auto_awesome, size: 16),
-              label: const Text("Optimize", style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7B61FF),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
+            child: Stack(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _showOptimizationDialog(context),
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text("Optimize & Save", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00DEC1),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(color: const Color(0xFF00DEC1), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF0F0F1E), width: 2)),
+                  ),
+                )
+              ],
             ),
           )
         ],
@@ -655,7 +995,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     onSelected: (selected) {
                       if (selected) setState(() => _filterType = filter);
                     },
-                    selectedColor: const Color(0xFFFF0266),
+                    selectedColor: const Color(0xFF00DEC1),
                     backgroundColor: Colors.white.withOpacity(0.05),
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : Colors.white60,
@@ -789,7 +1129,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: isHabit ? Colors.blueAccent.withOpacity(0.1) : const Color(0xFFFF0266).withOpacity(0.1),
+                                    color: isHabit ? Colors.blueAccent.withOpacity(0.1) : const Color(0xFF00DEC1).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Center(
@@ -845,6 +1185,26 @@ class _DashboardPageState extends State<DashboardPage> {
                                         style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
                                         overflow: TextOverflow.ellipsis,
                                       ),
+                                      const SizedBox(height: 6),
+                                      // Indian Market Bundle Badge
+                                      if (hasInsights && insights.any((i) => i.toString().contains("Bundle Opp:")))
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(colors: [const Color(0xFF00DEC1).withOpacity(0.2), const Color(0xFF00DEC1).withOpacity(0.05)]),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: const Color(0xFF00DEC1).withOpacity(0.5), width: 1),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.auto_awesome, color: Color(0xFF00DEC1), size: 12),
+                                              SizedBox(width: 6),
+                                              Text("BUNDLE SAVINGS AVAILABLE",
+                                                  style: TextStyle(color: Color(0xFF00DEC1), fontWeight: FontWeight.bold, fontSize: 9, letterSpacing: 1.0)),
+                                            ],
+                                          ),
+                                        ),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
@@ -975,33 +1335,41 @@ class _DashboardPageState extends State<DashboardPage> {
           String insightStr = insight.toString();
           if (insightStr.contains('Billing Opp:')) {
             merchantsWithYearly.add(sub['Merchant']?.toString() ?? '');
-            final match = RegExp(r'₹(\d+)').firstMatch(insightStr);
-            if (match != null) totalPotentialSavings += double.tryParse(match.group(1) ?? '0') ?? 0;
+            // Look specifically for savings amount at the end
+            final match = RegExp(r'Save ₹(\d+)').firstMatch(insightStr);
+            if (match != null) {
+              totalPotentialSavings += double.tryParse(match.group(1) ?? '0') ?? 0;
+            }
           }
           if (insightStr.contains('Bundle Opp:')) {
             bundleOpps.add(insightStr);
+            final match = RegExp(r'Save ₹(\d+)').firstMatch(insightStr);
+            if (match != null) {
+              totalPotentialSavings += (double.tryParse(match.group(1) ?? '0') ?? 0) * 12; // Annualized
+            }
           }
         }
       }
     }
 
+    String aiReport = "";
+    bool isLoadingAI = false;
+
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
-          String aiReport = "";
-          bool isLoadingAI = false;
-
           Future<void> fetchAIReport() async {
             setDialogState(() => isLoadingAI = true);
             try {
-              final prompt = """Analyze the user's subscriptions and provide a concise, actionable Cost Optimization Report.
+              final prompt = """Analyze the user's subscriptions and provide a concise, actionable Cost Optimization Report focused on the Indian market.
+Check if individual services can be replaced by cheaper Indian-specific bundled plans (like Apple One India, Amazon Prime, Disney+ Hotstar bundles, Spotify Duo/Family, or OTT aggregators like OTTplay/Tata Play Binge).
 
 Key data:
 - ${merchantsWithYearly.isNotEmpty ? 'Yearly billing would save: ₹${totalPotentialSavings.toStringAsFixed(0)}/year across ${merchantsWithYearly.length} subscriptions (${merchantsWithYearly.join(", ")})' : 'No yearly billing opportunities detected.'}
-- ${bundleOpps.isNotEmpty ? 'Bundle opportunities: ${bundleOpps.join('; ')}' : 'No bundle opportunities detected.'}
+- ${bundleOpps.isNotEmpty ? 'Detected Bundle opportunities: ${bundleOpps.join('; ')}' : 'No bundle opportunities detected yet.'}
 
-Give top 3 personalized recommendations, prioritized by savings. Be specific with subscription names and savings numbers. Use clear, concise bullet points.""";
+Give the top 3 personalized recommendations for Indian users, prioritized by savings. Be specific with subscription names and exact Rs. savings. Use clear, concise bullet points.""";
 
               final response = await http.post(
                 Uri.parse("$backendUrl/api/ai/chat"),
@@ -1026,7 +1394,7 @@ Give top 3 personalized recommendations, prioritized by savings. Be specific wit
               children: [
                 Icon(Icons.monetization_on, color: Colors.greenAccent),
                 SizedBox(width: 8),
-                Text("Cost Optimization", style: TextStyle(color: Colors.white, fontSize: 18)),
+                Text("Indian Cost Optimization", style: TextStyle(color: Colors.white, fontSize: 18)),
               ],
             ),
             content: SizedBox(
@@ -1072,7 +1440,7 @@ Give top 3 personalized recommendations, prioritized by savings. Be specific wit
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.link, color: Color(0xFF7B61FF), size: 15),
+                            const Icon(Icons.link, color: Color(0xFF00DEC1), size: 15),
                             const SizedBox(width: 8),
                             Expanded(child: Text(opp.replaceAll("Bundle Opp:", "").trim(), style: const TextStyle(color: Colors.white70, fontSize: 13))),
                           ],
@@ -1082,33 +1450,57 @@ Give top 3 personalized recommendations, prioritized by savings. Be specific wit
                     ],
 
                     // AI Report section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("🤖 Slayer AI Report", style: TextStyle(color: Color(0xFFFF0266), fontWeight: FontWeight.bold, fontSize: 13)),
-                        if (aiReport.isEmpty && !isLoadingAI)
-                          TextButton.icon(
-                            onPressed: fetchAIReport,
-                            icon: const Icon(Icons.auto_awesome, size: 14, color: Color(0xFF7B61FF)),
-                            label: const Text("Generate", style: TextStyle(color: Color(0xFF7B61FF), fontSize: 12)),
-                            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.02),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.auto_awesome, color: Color(0xFFFF0266), size: 18),
+                                  SizedBox(width: 8),
+                                  Text("NIYAMPE AI REPORT",
+                                      style: TextStyle(color: Color(0xFFFF0266), fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.2)),
+                                ],
+                              ),
+                              if (aiReport.isEmpty && !isLoadingAI)
+                                ElevatedButton(
+                                  onPressed: fetchAIReport,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF00DEC1),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text("GENERATE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                            ],
                           ),
-                      ],
+                          const SizedBox(height: 12),
+                          if (isLoadingAI)
+                            const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: Color(0xFF00DEC1))))
+                          else if (aiReport.isNotEmpty)
+                            Text(
+                              aiReport,
+                              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.6),
+                            )
+                          else
+                            const Text(
+                              "Tap generate for a deep-dive analysis of your spending and potential Indian market bundle savings.",
+                              style: TextStyle(color: Colors.white38, fontSize: 12, fontStyle: FontStyle.italic),
+                            ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    if (isLoadingAI)
-                      const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Color(0xFF7B61FF))))
-                    else if (aiReport.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(aiReport, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
-                      )
-                    else
-                      const Text("Tap 'Generate' for an AI-powered analysis.", style: TextStyle(color: Colors.white38, fontSize: 12, fontStyle: FontStyle.italic)),
                   ],
                 ),
               ),
@@ -1123,10 +1515,10 @@ Give top 3 personalized recommendations, prioritized by savings. Be specific wit
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                     content: Text("Optimization applied! Review your subscriptions.", style: TextStyle(color: Colors.white)),
-                    backgroundColor: Color(0xFF7B61FF),
+                    backgroundColor: Color(0xFF00DEC1),
                   ));
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7B61FF)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00DEC1)),
                 child: const Text("Switch & Save"),
               ),
             ],
